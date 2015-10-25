@@ -1,0 +1,85 @@
+---
+title: "nearest-neighbour-training.Rmd"
+author: "Jose Alberto Arcos"
+date: "25 de octubre de 2015"
+output: html_document
+---
+
+<br><br>
+
+Let's try to predict the iris set using nearest neighbour. I am going to use the RANN library. It is supposed to be a quick an efficient one. So...
+
+```{r message=FALSE, warning=FALSE}
+library(RANN)
+library(dplyr)
+library(ggplot2)
+```
+
+<br><br>
+
+Now, let's create a training set and a test set:
+
+```{r}
+training.index <- sample(x = 1:150, size = 130)
+test.index <- which(!(1:150 %in% training.index))
+
+training.set <- iris[training.index, ]
+test.set <- iris[test.index, ]
+incomplete.test <- test.set %>% select(-Species)
+
+ggplot(data = training.set) +
+    geom_point(mapping = aes(x = Sepal.Length, y = Sepal.Width, 
+                             color = Species)) +
+    geom_point(data = incomplete.test, mapping = aes(x = Sepal.Length, 
+                                                     y = Sepal.Width))
+```
+
+<br><br>
+
+And now, let's classify the test set using the nearest neighbour algorithm:
+
+```{r}
+model <- nn2(data = training.set, query = incomplete.test)
+```
+
+<br><br>
+
+And see the results:
+
+```{r}
+model$nn.idx[1, ]
+test.set[1, ]
+training.set[model$nn.idx[1, 1:3], ]
+
+ggplot(data = training.set) +
+    geom_point(mapping = aes(x = Sepal.Length, y = Sepal.Width, 
+                             color = Species)) +
+    geom_point(data = test.set[1, ], mapping = aes(x = Sepal.Length, 
+                                                     y = Sepal.Width)) +
+    geom_point(data = training.set[model$nn.idx[1, 1:3], ],
+               mapping = aes(x = Sepal.Length, y = Sepal.Width),
+               color = "yellow")
+```
+
+<br><br>
+
+Another example:
+
+```{r}
+model$nn.idx[15, ]
+test.set[15, ]
+training.set[model$nn.idx[15, 1:3], ]
+
+ggplot(data = training.set) +
+    geom_point(mapping = aes(x = Sepal.Length, y = Sepal.Width, 
+                             color = Species)) +
+    geom_point(data = test.set[15, ], mapping = aes(x = Sepal.Length, 
+                                                     y = Sepal.Width)) +
+    geom_point(data = training.set[model$nn.idx[15, 1:3], ],
+               mapping = aes(x = Sepal.Length, y = Sepal.Width),
+               color = "yellow")
+```
+
+<br><br>
+
+## It works!
