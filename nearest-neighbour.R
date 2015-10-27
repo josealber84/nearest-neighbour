@@ -1,4 +1,8 @@
 # Let's try with real data!
+#
+# Chromosome = [I1 I2 I3 ... IN N F]
+#
+#
 
 library(RANN)
 library(dplyr)
@@ -7,9 +11,15 @@ library(magrittr)
 library(lubridate)
 library(genalg)
 
+source("genalg/plot.rbga.R")
+source("genalg/rbga.bin.R")
+source("genalg/rbga.R")
+source("genalg/summary.rbga.R")
+source("functions.R")
+
 # Config
 setwd("~/data/nearest-neighbour")
-seed(22)
+set.seed(22)
 
 # Read data
 train <- read.csv("data/train.csv", 
@@ -21,37 +31,20 @@ test <- read.csv("data/test.csv",
 
 # Re-structure data
 all.training.data <- ReStructure(train, store, test)
-
-
-# Change variable importance
-modified.all.training.data <- all.training.data
-modified.all.training.data$Open <- all.training.data$Open * 100000
-all.training.data$CompetitionDistance <- all.training.data$CompetitionDistance / 1000
-all.training.data$SchoolHoliday <- all.training.data$SchoolHoliday * 100000
+all.training.data <- Normalize(all.training.data)
 
 # Create training and test set
 index.training <- sample(x = 1:nrow(all.training.data), size = 1000000)
 index.cv <- !(1:nrow(all.training.data) %in% index.training)
-training.set <- all.training.data[index.training, ]
-cv.set <- all.training.data[index.cv, ] %>% filter(Sales != 0)
-incomplete.training <- training.set %>% select(-Sales)
-incomplete.cv <- cv.set %>% select(-Sales)
 
 # Launch world
-model <- nn2(data = incomplete.training, query = incomplete.cv)
-
-# Make prediction 
-sales.prediction <- training.set[model$nn.idx[, 1], "Sales"]
-
-# Calculate error
-rmspe <- RMSPE(cv.set$Sales, sales.prediction)
-
-# See results
-model$nn.idx[1, ]
-cv.set[1, ]
-training.set[model$nn.idx[1, 1:3], ]
-
-QUEDA PENDIENTE LA CONVERSIÓN A ALGORITMO GENÉTICO SIGUIENDO LA DEFINICION DE LA PIZARRA
+min.values <- c(rep(0, ncol(all.training.data) - 1), 1, 1)
+max.values <- c(rep(100, ncol(all.training.data) - 1), 3, 2)
+world <- rbga(stringMin = min.values, stringMax = max.values, popSize = 50,
+              iters = 100, verbose = TRUE, evalFunc = Evaluate, 
+              mutationChance = 0.25,
+              data = all.training.data, index.training = index.training,
+              index.cv = index.cv)
 
 
 

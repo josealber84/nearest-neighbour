@@ -5,6 +5,12 @@ RMSPE <- function(real, prediction){
     
 }
 
+RMSPE2 <- function(real, prediction){
+    
+    sum((real - prediction) / real)^2
+    
+}
+
 ReStructure <- function(train, store, test){
     
     all.training.data <-
@@ -55,5 +61,69 @@ ReStructure <- function(train, store, test){
                promo2.weeks = ifelse(is.na(promo2.weeks), 0, promo2.weeks))
     
     all.training.data
+    
+}
+
+Evaluate <- function(chromosome, data, index.training, index.cv){
+    
+    cat("\nEvaluating chromosome [", chromosome[1:5], "...]")
+
+    
+    # Create sets
+    training.set <- data[index.training, ]
+    cv.set <- data[index.cv, ] %>% filter(Sales != 0)
+    incomplete.training <- training.set %>% select(-Sales)
+    incomplete.cv <- cv.set %>% select(-Sales)
+    
+    # Change data with importance
+    for(col in 1:ncol(incomplete.training)){
+        incomplete.training[, col] <- incomplete.training[, col] * chromosome[col]
+        incomplete.cv[, col] <- incomplete.cv[, col] * chromosome[col]
+    }
+    
+    # Create model
+    model <- nn2(data = incomplete.training, query = incomplete.cv)
+    
+    # Make prediction 
+    sales.prediction.1 <- training.set[model$nn.idx[, 1], "Sales"]
+    sales.prediction.2 <- training.set[model$nn.idx[, 2], "Sales"]
+    sales.prediction.3 <- training.set[model$nn.idx[, 3], "Sales"]
+    sales.prediction <- matrix(c(sales.prediction.1, sales.prediction.2, 
+                                 sales.prediction.3), ncol = 3, byrow = FALSE)
+    
+    # Mean/median of the values
+    mean.or.median <- round(tail(chromosome, 1))
+    if(mean.or.median == 1)
+        function.to.apply <- mean
+    else
+        function.to.apply <- median
+    
+    number.to.see <- round(chromosome[length(chromosome) - 1])
+    if(number.to.see > 1)
+        sales.prediction <- rowMeans(x = sales.prediction[, 1:number.to.see])
+    else
+        sales.prediction <- sales.prediction.1
+    
+    cat("\nSales prediction = [", sales.prediction[1:5], "...]")
+    
+    # Calculate error
+    rmspe <- RMSPE(cv.set$Sales, sales.prediction)
+    rmspe2 <- RMSPE2(cv.set$Sales, sales.prediction)
+    
+    cat("\nError = ", rmspe, fill = T)
+    rmspe2
+    
+}
+
+Normalize <- function(data){
+    
+    for(col in 1:ncol(data)){
+        
+        c <- data[, col]
+        data[, col] <- (c - min(c, na.rm = T)) / (max(c, na.rm = T) - min(c, na.rm = T))
+        
+    }
+    
+    data
     
 }
